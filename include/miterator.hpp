@@ -2,8 +2,8 @@
 #include "mtype_traits.hpp"
 #include "utility.hpp"
 #include <cstddef>
-
 #include <vector>
+
 namespace mstl {
 
 // these are essentially a product type.
@@ -37,14 +37,112 @@ template <typename T> struct iterator_traits<T *> {
   using iterator_category = mstl::random_access_iterator_tag;
 };
 
-template <typename Category, typename T, typename Distance = ptrdiff_t,
-          typename Pointer = T *, typename Reference = T &>
-struct iterator {
-  using value_type = T;
-  using difference_type = Distance;
-  using pointer = Pointer;
-  using reference = Reference;
-  using iterator_category = Category;
+// Note: before C++17 there was a type called std::iterator, which is used as
+// the based class for other types of iterator to inherit. e.g
+// template <typename T>
+// class back_insert_iterator : public iterator<C, void, void, void, void> {...}
+// this style was considered not clear, and now instead all implementations just
+// list all elements directly.
+
+} // namespace mstl
+
+namespace mstl {
+
+// iterator tag really works like an enum here.
+template <typename Iter>
+constexpr typename mstl::iterator_traits<Iter>::difference_type
+distance__(Iter first, Iter last, mstl::input_iterator_tag) {
+  typename mstl::iterator_traits<Iter>::difference_type ret = 0;
+  for (; first != last; ++first, ++ret)
+    ;
+
+  return ret;
+}
+
+template <typename Iter>
+constexpr typename mstl::iterator_traits<Iter>::difference_type
+distance__(Iter first, Iter last, mstl::random_access_iterator_tag) {
+  return last - first;
+}
+
+// return the distance between first and list.
+// note ub: if the last is not reachable from the first.
+template <typename Iter>
+typename mstl::iterator_traits<Iter>::difference_type distance(Iter first,
+                                                               Iter last) {
+  return do_distance(first, last,
+                     mstl::iterator_traits<Iter>::iterator_category());
+}
+
+} // namespace mstl
+
+namespace mstl {
+
+// the only purpose of back_insertor is to appaned value back
+// to the container.
+// Normally C's push_back will be called.
+template <typename C> class back_insert_iterator {
+protected:
+  C *container;
+
+public:
+  using container_type = C;
+  using difference_type = void; // these won't be used anyway
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using iterator_category = mstl::output_iterator_tag;
+
+  explicit back_insert_iterator(C &x){};
+
+  // you only wnat to push back bascially.
+  back_insert_iterator &operator=(const typename C::value_type &value) {
+    container->push_back(value);
+    return *this;
+  }
+  back_insert_iterator &operator=(const typename C::value_type &&value) {
+    container->push_back(mstl::move(value));
+    return *this;
+  }
+
+  // increment just means return itself.
+  back_insert_iterator &operator*() { return *this; };
+  back_insert_iterator &operator++() { return *this; };
+  back_insert_iterator operator++(int) { return *this; };
 };
+
+template <typename C> mstl::back_insert_iterator<C> back_inserter(C &x) {
+  return back_insert_iterator<C>(x);
+}
+
+template <typename C> class front_insert_iterator {
+protected:
+  C *container;
+
+public:
+  using container_type = C;
+  using difference_type = void; // these won't be used anyway
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using iterator_category = mstl::output_iterator_tag;
+
+  explicit front_insert_iterator(C &x){};
+  front_insert_iterator &operator=(const typename C::value_type &value) {
+    container->push_front(value);
+    return *this;
+  }
+  front_insert_iterator &operator=(const typename C::value_type &&value) {
+    container->push_front(mstl::move(value));
+    return *this;
+  }
+  front_insert_iterator &operator*() { return *this; };
+  front_insert_iterator &operator++() { return *this; };
+  front_insert_iterator operator++(int) { return *this; };
+};
+
+template <typename C> mstl::front_insert_iterator<C> back_inserter(C &x) {
+  return front_insert_iterator<C>(x);
+}
 
 } // namespace mstl
