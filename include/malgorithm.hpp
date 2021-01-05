@@ -196,8 +196,26 @@ OutputIt generate_n(OutputIt first, Size n, Generator g) {
 
 } // namespace mstl
 
-namespace mstl
-{
+namespace mstl {
 
+// operator=  implies *first needs to be copyable.
+template <typename InputIt, typename OutputIt>
+OutputIt copy(InputIt first, InputIt last, OutputIt d_first) {
+  while (first != last) {
+    *d_first++ = *first++;
+  }
+  return d_first;
+}
 
-} /* mstl */
+template <typename InputIt, typename OutputIt, typename UnaryPredicate>
+OutputIt copy_if(InputIt first, InputIt last, OutputIt d_first,
+                 UnaryPredicate pred) {
+  while (first != last) {
+    if (pred(*first)) {
+      *d_first++ = *first++;
+    }
+  }
+  return d_first;
+}
+
+} // namespace mstl
