@@ -57,7 +57,7 @@ template <typename T> class K { T n; int foo() {return n.a + n.b}};
 
 - Exception is probably the only place stl uses inheritence. It makes sense for exception because you do have this hierachy between different exceptions naturally.
 
-- One take away from stl is you can write your own type trait, and use it as interface over different typesl.
+- One take away from stl is you can write your own type trait, and use it as interface over different types.
 
 ```c++
 // this doesn't work, because you only have one overload really.
