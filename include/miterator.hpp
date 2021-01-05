@@ -1,4 +1,5 @@
 #pragma once
+#include "mmemory.hpp"
 #include "mtype_traits.hpp"
 #include "utility.hpp"
 #include <cstddef>
@@ -158,6 +159,10 @@ namespace mstl {
 //   _      1      2     3     4     5
 //   rend                           rbegin
 // You can access the underlying iterator with base();
+// Notice the subtlty of + and -
+// - gives difference_type yet + gives a new iterator.
+// - can have the case that iter - iter, but for +, both operands must be iter.
+// it makes sense if you view iters as pointers.
 template <typename Iter> class reverse_iterator {
 
 protected:
@@ -192,43 +197,82 @@ public:
   // one before it.
   // 1 2 3 4 _
   //         ^
-  constexpr reference operator*() {
+  constexpr reference operator*() const {
     Iter tmp = current;
     return *--tmp;
   }
 
-  constexpr pointer operator->() {
-    // TODO
+  // address of the element returned by operator*
+  constexpr pointer operator->() const { return mstl::addressof(operator*()); }
+
+  constexpr reverse_iterator &operator++() {
+    --current;
+    return *this;
   }
 
-  constexpr reverse_iterator &operator++();
-  constexpr reverse_iterator operator++(int);
+  // this one return a copy
+  constexpr reverse_iterator operator++(int) {
+    reverse_iterator tmp(*this);
+    --current;
+    return tmp;
+  }
 
-  constexpr reverse_iterator &operator--();
-  constexpr reverse_iterator operator--(int);
+  constexpr reverse_iterator &operator--() {
+    ++current;
+    return *this;
+  }
+
+  constexpr reverse_iterator operator--(int) {
+    reverse_iterator tmp(*this);
+    ++current;
+    return tmp;
+  }
 
   // return by value if it creates a new iterator. otherwise return a
   // reference of itself.
-  constexpr reverse_iterator operator+(difference_type n) const;
-  constexpr reverse_iterator &operator+=(difference_type n);
+  // left +
+  constexpr reverse_iterator operator+(difference_type n) const {
+    return reverse_iterator(current - n);
+  }
 
-  constexpr reverse_iterator operator-(difference_type n) const;
-  constexpr reverse_iterator &operator-=(difference_type n);
+  constexpr reverse_iterator &operator+=(difference_type n) {
+    current -= n;
+    return *this;
+  }
 
-  constexpr reference operator[](difference_type n) const;
+  constexpr reverse_iterator operator-(difference_type n) const {
+    return reverse_iterator(current + n);
+  }
+
+  constexpr reverse_iterator &operator-=(difference_type n) {
+    current += n;
+    return *this;
+  }
+
+  // reuse functions defined above
+  constexpr reference operator[](difference_type n) const {
+    return *(*this + n);
+  }
 };
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator==(const mstl::reverse_iterator<Iter1> &x,
-                          const mstl::reverse_iterator<Iter2> &y);
+                          const mstl::reverse_iterator<Iter2> &y) {
+  return x.base() == y.base();
+}
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator<(const mstl::reverse_iterator<Iter1> &x,
-                         const mstl::reverse_iterator<Iter2> &y);
+                         const mstl::reverse_iterator<Iter2> &y) {
+
+  return x.base() > y.base();
+}
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator<=(const mstl::reverse_iterator<Iter1> &x,
-                          const mstl::reverse_iterator<Iter2> &y);
+                          const mstl::reverse_iterator<Iter2> &y) {
+  return x.base() >= y.base();
+}
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator!=(const mstl::reverse_iterator<Iter1> &x,
@@ -238,26 +282,38 @@ constexpr bool operator!=(const mstl::reverse_iterator<Iter1> &x,
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator>(const mstl::reverse_iterator<Iter1> &x,
-                         const mstl::reverse_iterator<Iter2> &y);
+                         const mstl::reverse_iterator<Iter2> &y) {
+  return x.base() < y.base();
+}
 
 template <typename Iter1, typename Iter2>
 constexpr bool operator>=(const mstl::reverse_iterator<Iter1> &x,
-                          const mstl::reverse_iterator<Iter2> &y);
+                          const mstl::reverse_iterator<Iter2> &y) {
 
-// compute the distance between two reverse iterator
+  return x.base() >= y.base();
+}
+
 template <typename Iter1, typename Iter2>
 constexpr auto operator-(const mstl::reverse_iterator<Iter1> &x,
                          const mstl::reverse_iterator<Iter2> &y)
-    -> decltype(y.base() - x.base());
+    -> decltype(y.base() - x.base()) {
+  return y.base() - x.base();
+}
 
+// right plus
 // just advance the iterator
 template <typename Iter>
 constexpr mstl::reverse_iterator<Iter>
-operator+(const mstl::reverse_iterator<Iter> &x,
-          const mstl::reverse_iterator<Iter> &y);
+operator+(typename mstl::reverse_iterator<Iter>::difference_type n,
+          const mstl::reverse_iterator<Iter> &x) {
+  return reverse_iterator<Iter>(x.base() - n);
+}
 
 template <typename Iter>
-constexpr reverse_iterator<Iter> make_reverse_iterator(Iter i);
+constexpr reverse_iterator<Iter> make_reverse_iterator(Iter i) {
+
+  return reverse_iterator<Iter>(i);
+}
 
 } // namespace mstl
 

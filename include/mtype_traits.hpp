@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <type_traits>
 
 namespace mstl {
 
@@ -55,6 +56,9 @@ struct add_rvalue_reference : decltype(mstl::try_add_rvalue_reference<T>(0)) {};
 
 } // namespace mstl
 
+// there are some type traits require compiler intrinsics.
+namespace mstl {} // namespace mstl
+
 namespace mstl {
 // these are some pattern matching style templates
 template <typename T> struct remove_cv { using type = T; };
@@ -64,7 +68,6 @@ template <typename T> struct remove_cv<const volatile T> { using type = T; };
 
 template <typename T> struct remove_const { using type = T; };
 template <typename T> struct remove_const<const T> { using type = T; };
-
 template <typename T> struct remove_volatile { using type = T; };
 template <typename T> struct remove_volatile<volatile T> { using type = T; };
 
@@ -91,6 +94,14 @@ template <typename T> struct remove_pointer<T *const volatile> {
 };
 
 } // namespace mstl
+
+namespace mstl {
+// There are some type traits can only be implemented with compiler intrinsics.
+// I don't bother with those.
+template <typename T> struct is_enum : std::is_enum<T> {};
+template <typename T> struct is_union : std::is_union<T> {};
+
+} /* namespace mstl */
 
 namespace mstl {
 template <typename T, typename U> struct is_same : mstl::false_type {};
@@ -128,8 +139,7 @@ struct is_integral
                     mstl::is_same<typename mstl::remove_cv<long>::type,
                                   long>::value ||
                     mstl::is_same<typename mstl::remove_cv<long long>::type,
-                                  long long>::value ||
-                    false> {};
+                                  long long>::value> {};
 
 template <typename T>
 struct is_floating_point
@@ -161,5 +171,111 @@ struct is_member_pointer_<T U::*> : mstl::true_type {};
 template <typename T>
 struct is_member_pointer
     : is_member_pointer_<typename mstl::remove_cv<T>::type> {};
+
+// fundamental types like arithmetics, void, nullptr
+template <typename T>
+struct is_fundamental
+    : mstl::integral_constant<
+          bool, mstl::is_arithmetic<T>::value || mstl::is_void<T>::value ||
+                    mstl::is_same<std::nullptr_t,
+                                  typename mstl::remove_cv<T>::type>::value> {};
+
+// a compound type is a type that is constructed from fundamental types
+template <typename T>
+struct is_compound
+    : mstl::integral_constant<bool, !mstl::is_fundamental<T>::value> {};
+
+// check if it's a class by checking if member pointers exist.
+// here we faked a member pointer int T::* up. The class doesn't need to
+// have a int member at all. As long as the type is a class, this type is valid.
+// On the other hand, any other type can't have this definition.
+template <typename T, typename = void> struct is_class : false_type {};
+template <typename T>
+struct is_class<T, typename mstl::void_t<int T::*>> : true_type {};
+
+template <typename T> struct is_reference : false_type {};
+template <typename T> struct is_reference<T &> : true_type {};
+template <typename T> struct is_reference<T &&> : true_type {};
+
+// not array or class.
+template <typename T>
+struct is_scalar
+    : mstl::integral_constant<bool, mstl::is_arithmetic<T>::value ||
+                                        mstl::is_enum<T>::value ||
+                                        mstl::is_pointer<T>::value ||
+                                        mstl::is_member_pointer<T>::value ||
+                                        mstl::is_null_pointer<T>::value> {};
+
+// not function, reference, or void
+template <typename T>
+struct is_object
+    : mstl::integral_constant<
+          bool, mstl::is_array<T>::value || mstl::is_scalar<T>::value ||
+                    mstl::is_union<T>::value || mstl::is_class<T>::value> {};
+
+} // namespace mstl
+
+namespace mstl {
+template <typename T> struct is_function : mstl::false_type {};
+
+// regular function
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...)> : mstl::true_type {};
+
+// varaidc functions like printf
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...)> : mstl::true_type {};
+
+// bunch of cv qualifiers...
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) volatile> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const volatile> : mstl::true_type {};
+
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) volatile> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const volatile> : mstl::true_type {};
+
+// then bunch of ref qualfiers...
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) volatile &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const volatile &> : mstl::true_type {};
+
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) volatile &> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const volatile &> : mstl::true_type {};
+
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) volatile &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args...) const volatile &&> : mstl::true_type {};
+
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) volatile &&> : mstl::true_type {};
+template <typename Ret, class... Args>
+struct is_function<Ret(Args..., ...) const volatile &&> : mstl::true_type {};
 
 } // namespace mstl
