@@ -1,6 +1,8 @@
 #pragma once
 
+#include "malgorithm.hpp"
 #include <cstddef>
+
 namespace mstl {
 
 template <typename T, size_t N> struct array {
@@ -18,7 +20,10 @@ template <typename T, size_t N> struct array {
   using iterator = pointer;
   using const_iterator = const_pointer;
 
-  constexpr void fill(const T &);
+  constexpr value_type *data() noexcept { return elements_; }
+  constexpr const value_type *data() const noexcept { return elements_; }
+
+  constexpr void fill(const T &u) { mstl::fill_n(data(), data() + N, u); }
   constexpr void swap(array &);
 
   iterator begin() noexcept;
@@ -28,7 +33,6 @@ template <typename T, size_t N> struct array {
   const_iterator end() const noexcept;
 
   // TODO
-
 };
 
 } // namespace mstl

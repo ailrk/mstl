@@ -203,7 +203,7 @@ namespace mstl {
 
 // operator=  implies *first needs to be copyable.
 template <typename InputIt, typename OutputIt>
-OutputIt copy(InputIt first, InputIt last, OutputIt d_first) {
+constexpr OutputIt copy(InputIt first, InputIt last, OutputIt d_first) {
   while (first != last) {
     *d_first++ = *first++;
   }
@@ -211,14 +211,78 @@ OutputIt copy(InputIt first, InputIt last, OutputIt d_first) {
 }
 
 template <typename InputIt, typename OutputIt, typename UnaryPredicate>
-OutputIt copy_if(InputIt first, InputIt last, OutputIt d_first,
-                 UnaryPredicate pred) {
+constexpr OutputIt copy_if(InputIt first, InputIt last, OutputIt d_first,
+                           UnaryPredicate pred) {
   while (first != last) {
     if (pred(*first)) {
       *d_first++ = *first++;
     }
   }
   return d_first;
+}
+
+template <typename InputIt, typename Size, typename OutputIt>
+constexpr OutputIt copy_n(InputIt first, Size count, OutputIt d_first) {
+  if (count > 0) {
+    for (Size n = 0; n < count; ++n) {
+      *d_first++ = *first++;
+    }
+  }
+  return d_first;
+}
+
+// copy from the last to the first.
+template <typename BiIter1, typename BiIter2>
+constexpr BiIter2 copy_backward(BiIter1 first1, BiIter1 last1, BiIter2 last2) {
+  while (first1 != last1) {
+    *(--last2) = *(--last1);
+  }
+  return last2;
+}
+
+} // namespace mstl
+
+namespace mstl {
+
+template <typename ForwardIt, typename T>
+constexpr void fill(ForwardIt first, ForwardIt last, const T &value) {
+  for (; first != last; ++first) {
+    *first = value;
+  }
+}
+
+template <typename OutputIt, typename Size, typename T>
+constexpr OutputIt fill_n(OutputIt first, Size count, const T &value) {
+  for (Size i = 0; i < count; ++i) {
+    *first++ = value;
+  }
+  return first;
+}
+
+} // namespace mstl
+
+namespace mstl {
+// we can just move. note a move to b will call b's destructor.
+template <typename T> void swap(T &a, T &b) {
+  T tmp = mstl::move(a);
+  a = mstl::move(b);
+  b = mstl::move(tmp);
+}
+
+// nice thing is you can swap element between an array and a unordered map.
+template <typename ForwardIter1, typename ForwardIter2>
+void iter_swap(ForwardIter1 a, ForwardIter2 b) {
+  mstl::swap(*a, *b);
+}
+
+// exchange elements from range [first1, last1) with another range starting from
+// first2.
+template <typename ForwardIt1, typename ForwardIt2>
+ForwardIt2 swap_ranges(ForwardIt1 first1, ForwardIt1 last1, ForwardIt2 first2) {
+  while (first1 != last1) {
+    mstl::iter_swap(first1++, first2++);
+  }
+  return first2;
 }
 
 } // namespace mstl

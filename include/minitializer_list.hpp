@@ -5,11 +5,18 @@
 
 namespace mstl {
 
-// an initializer list is essentially a slice of some elements.
+// An initializer list is essentially a slice of some elements.
 // core util: a pointer to the head of the list and the size of the list.
 // Initialize with initializer list is really just pass the pointer and
 // size of the list to the container, and let the container takes over the
 // ownership.
+// One thing I don't understand is that initializer list doesn't own the
+// underlying array. The cppreference says the underlying array of initalizer
+// list is always a temporary, and the detail is unspecified.  When is that
+// array get allocated?
+// My guess is it's compiler support mechanism, and initializer list here is
+// just an handle over the temporary array. But I can't find evidence to verify
+// that.
 template <typename T> class initializer_list {
 
   const T *begin_;
