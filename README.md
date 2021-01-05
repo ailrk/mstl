@@ -9,9 +9,7 @@ I don't bother implement anything from `<c...>` like `<cstddef>`, since they are
 
 Not only for stl, just some notes on c++ in general.
 
-- I think people overly hyped stl. It's pretty generic and less verbose then full blown oop, but it does have these compile time duck typing feeling. Today we have concept, so things get much better, but before concept if you don't bother writing sfinae, your types are basically naked. Yet you see people on Stackoverflow in 2014 hyped c++ stl as if it's the ultimate abstraction method.
-
-- Saying duck typing is not 100% correct, because you still have type checking. One example is when you are passing an OutputIter to `std::transform`. Normally you will pass a `back_insert_iterator`, but also you can anything else that implemented `*` and `++` since the implementation only uses these two operators. Now the problem becomes, does it reflects the programmer's intention? If I pass a allocator with `*` and `++` implemneted to `std::transform`, does it make sense? (2021-01-04)
+- What's so good about stl? It's pretty generic and less verbose, but it does have these compile time duck typing feeling. Today we have concept, so we can do type constraint, but before concept if you don't bother writing sfinae, your types are basically naked. Yet you see people on Stackoverflow in 2014 hyped c++ stl as if it's the ultimate abstraction method. Saying duck typing is not 100% correct, because you still have type checking. If the type you pass to the tempalte doesn't implement a function it uses it will fail to compile. But in case like passing an OutputIter to `std::transform`, normally you will pass a `back_insert_iterator`, but also you can anything else that implemented `*` and `++` since the implementation only uses these two operators. Now the problem becomes, does it reflects the programmer's intention? If I pass a allocator with `*` and `++` implemneted to `std::transform`, does it make sense? (2021-01-04)
 
   - So the main voice in c++ community seems to be only type check when it's necessary.
   - Old school way of checking type constraint is either `enable_if` or `static_assert`.
@@ -46,6 +44,30 @@ template <typename T> class K { T n; int foo() {return n.a + n.b}};
 -  Allocator also depends heavily on type traits, I wonder if it will be replaced by concept in the future.
 
 - Some stl tricks only exist on folklore. For example, you write this type a lot: `template <typename T> struct identity { using type = T; };`, because `Identity<T>::type` will be not be deduced. Lots of idioms need to be learnt from reading the source code (I guess it's the same for all langauges.)
+
+- Remember to remove cv qualifers when writing type traits. C++ is weakly typed so sometimes types with different qualifiers can convert to each others, but somteimes they are totally different types. When doing type level operations it's better to assume they are not the same.
+
+- When writing `enable_if`, make sure you are not overloading the same default type parameters, because the compiler will treat them as the same specialization, thus a redefinition.
+
+- You have these weird pointer to member data type `T U::*`...
+
+- I'm starting to appreciate how much work around it takes to implemnet all those `is_...` type traits. There are lots of implementations relies on exluding cases. For example, if a type is not fundamental, then it's a compound type; if a type can specialize to `C::*` but is not a union, then it's a class etc...
+
+- The biggest achievement of stl with generic programming might be abstract the iterator out, so the same iterface can work on anything act like iterator. With iterator, you have bring this notion of pointer to anywhere acts like a sequece. Many other components like allocator also have similar vibe, but not as impactful as iterator I guess.
+
+- Exception is probably the only place stl uses inheritence. It makes sense for exception because you do have this hierachy between different exceptions naturally.
+
+- One take away from stl is you can write your own type trait, and use it as interface over different typesl.
+
+```c++
+// this doesn't work, because you only have one overload really.
+template <typename A, typename = enable_if_t<is_integral_v<T>, bool>>
+void foo(A);
+
+template <typename B, typename = enable_if_t<is_floating_v<T>, bool>>
+void foo(B);
+
+```
 
 ### Source
 
