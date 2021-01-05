@@ -27,6 +27,7 @@ template <typename T, size_t N> struct array {
   iterator end() noexcept;
   const_iterator end() const noexcept;
 
+  // TODO
 
 };
 

@@ -149,10 +149,9 @@ template <typename C> mstl::front_insert_iterator<C> back_inserter(C &x) {
 
 namespace mstl {
 
-// reverse iterator requires the underlying iterator to be a bidirectional
-// iterator.
-// Reverse iterator builds a new iterator on top of the underlying iterator.
-// Assume the following iterator:
+// reverse iterator is an iterator adaptor, it requires the underlying iterator
+// to be a bidirectional iterator. Reverse iterator builds a new iterator on top
+// of the underlying iterator. Assume the following iterator:
 //   1      2     3     4     5    _
 //   begin                        end
 // Reverse iterator manage two new pointers as this:
@@ -172,19 +171,35 @@ public:
   using iterator_category =
       typename mstl::iterator_traits<Iter>::iterator_category;
 
-  constexpr reverse_iterator();
-  constexpr explicit reverse_iterator(Iter x); // avoid casting.
+  // default initialize the iterator
+  constexpr reverse_iterator() : current() {}
+
+  constexpr explicit reverse_iterator(Iter x) : current(x) {}
 
   // copy constructors.
   template <typename U>
-  constexpr reverse_iterator(const mstl::reverse_iterator<U> &u);
+  constexpr reverse_iterator(const mstl::reverse_iterator<U> &u)
+      : current(u.base()) {}
   template <typename U>
-  constexpr reverse_iterator &operator=(const reverse_iterator<U> &u);
+  constexpr reverse_iterator &operator=(const reverse_iterator<U> &u) {
+    this->current = u.base();
+    return *this;
+  }
 
-  constexpr Iter base() const;
+  constexpr Iter base() const { return current; }
 
-  constexpr reference operator*();
-  constexpr pointer operator->();
+  // when refering the last element, reverse iterator actually refers to
+  // one before it.
+  // 1 2 3 4 _
+  //         ^
+  constexpr reference operator*() {
+    Iter tmp = current;
+    return *--tmp;
+  }
+
+  constexpr pointer operator->() {
+    // TODO
+  }
 
   constexpr reverse_iterator &operator++();
   constexpr reverse_iterator operator++(int);
@@ -234,5 +249,22 @@ template <typename Iter1, typename Iter2>
 constexpr auto operator-(const mstl::reverse_iterator<Iter1> &x,
                          const mstl::reverse_iterator<Iter2> &y)
     -> decltype(y.base() - x.base());
+
+// just advance the iterator
+template <typename Iter>
+constexpr mstl::reverse_iterator<Iter>
+operator+(const mstl::reverse_iterator<Iter> &x,
+          const mstl::reverse_iterator<Iter> &y);
+
+template <typename Iter>
+constexpr reverse_iterator<Iter> make_reverse_iterator(Iter i);
+
+} // namespace mstl
+
+namespace mstl {
+
+// move iterator is another iterator adaptor. The idea is if a move
+// iterator is used as an output iterator, the value will be moved
+// instead of copied.
 
 } // namespace mstl

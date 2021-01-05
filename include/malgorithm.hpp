@@ -5,6 +5,7 @@
 #include "utility.hpp"
 
 namespace mstl {
+// find the first occurence of the value;
 template <typename InputIter, typename T>
 constexpr InputIter find(InputIter first, InputIter last, const T &value) {
   for (; first != last; ++first) {
@@ -179,6 +180,8 @@ constexpr bool none_of(InputIt first, InputIt last, UnaryPredicate pred) {
 } // namespace mstl
 
 namespace mstl {
+// range function but also based on side effect, instead of return a new
+// iterator.
 template <typename ForwardIt, typename Generator>
 void generate(ForwardIt first, ForwardIt last, Generator g) {
   while (first != last) {
