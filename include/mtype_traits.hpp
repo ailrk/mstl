@@ -213,6 +213,9 @@ struct is_object
           bool, mstl::is_array<T>::value || mstl::is_scalar<T>::value ||
                     mstl::is_union<T>::value || mstl::is_class<T>::value> {};
 
+template <typename T> struct is_const : mstl::false_type {};
+template <typename T> struct is_const<const T> : mstl::true_type {};
+
 } // namespace mstl
 
 namespace mstl {

@@ -7,6 +7,8 @@
 namespace mstl {
 
 // you really use constexpr anywhere, no joke.
+// llvm implementation here specialized the array<T, 0> case for error
+// message. It's too much hassle so I just use static_assert.
 template <typename T, size_t N> struct array {
 
   T elements_[N];
@@ -28,9 +30,24 @@ template <typename T, size_t N> struct array {
   constexpr value_type *data() noexcept { return elements_; }
   constexpr const value_type *data() const noexcept { return elements_; }
 
-  constexpr void fill(const T &u) { mstl::fill_n(data(), data() + N, u); }
+  constexpr void fill(const T &u) {
+    if (N == 0) {
+      static_assert(!mstl::is_const<T>::value,
+                    "cannot fill zero sized array of const T");
+    } else {
+
+      mstl::fill_n(data(), data() + N, u);
+    }
+  }
+
   constexpr void swap(array &a) {
-    mstl::swap_ranges(data(), data() + N, a.data());
+    if (N == 0) {
+      static_assert(!mstl::is_const<T>::value,
+                    "cannot swap zero sized array of const T");
+    } else {
+
+      mstl::swap_ranges(data(), data() + N, a.data());
+    }
   }
 
   constexpr inline iterator begin() noexcept { return iterator(data()); }
@@ -74,17 +91,48 @@ template <typename T, size_t N> struct array {
   constexpr bool empty() const noexcept { return N == 0; }
 
   constexpr reference operator[](size_type n) noexcept {
+    static_assert(N > 0, "cannot access a zero size array");
     static_assert(n < N, "mstl::array<T, N> index out of bound");
     return elements_[n];
   }
 
   constexpr reference at(size_type n) {
-    if (n > N) {
+    static_assert(N > 0, "cannot call array<T, 0>::at");
+    if (n >= N) {
       throw mstl::exception();
     }
     return elements_[n];
   }
 
+  constexpr reference at(size_type n) const {
+    static_assert(N > 0, "cannot call array<T, 0>::at");
+    if (n >= N) {
+      throw mstl::exception();
+    }
+    return elements_[n];
+  }
+
+  constexpr reference front() noexcept {
+    static_assert(N > 0, " cannot call array<T, 0>::front");
+    return (*this)[0];
+  }
+
+  constexpr reference front() const noexcept {
+    static_assert(N > 0, " cannot call array<T, 0>::front");
+    return (*this)[0];
+  }
+
+  constexpr reference back() noexcept {
+    static_assert(N > 0, " cannot call array<T, 0>::back");
+    return (*this)[N - 1];
+  }
+
+  constexpr reference back() const noexcept {
+    static_assert(N > 0, " cannot call array<T, 0>::back");
+    return (*this)[N - 1];
+  }
 };
+
+// methods
 
 } // namespace mstl
