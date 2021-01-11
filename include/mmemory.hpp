@@ -24,7 +24,22 @@ template <> class allocator<const void> {
 } // namespace mstl
 
 namespace mstl {
+// get the real address of object.
+// This is the equivalence of &, and it can be used when & is
+// overloaded.
+template <typename T> constexpr T *addressof(T &arg) noexcept {
+  return reinterpret_cast<T *>(
+      &const_cast<char &>(reinterpret_cast<const volatile char &>(arg)));
+}
 
+template <typename T>
+constexpr T *addressof(const T &&arg) = delete; // no addr for const rvalue
+
+} // namespace mstl
+
+namespace mstl {
+
+namespace pointer_traits_UTILL {
 // some pointer traits helpers to check if certain member exists.
 // we need this to check for arbitrary types.
 
@@ -37,7 +52,7 @@ struct has_element_type__ : mstl::false_type {}; // base
 template <typename T>
 struct has_element_type__<T, mstl::void_t<typename T::element_type>>
     : mstl::true_type {};
-template <typename Ptr, bool = mstl::has_element_type__<Ptr>::value>
+template <typename Ptr, bool = has_element_type__<Ptr>::value>
 
 struct pointer_trait_element_type__; // base
 template <typename Ptr> struct pointer_trait_element_type__<Ptr, true> {
@@ -57,7 +72,17 @@ struct pointer_trait_element_type__<Sp<Tp, Args...>, false> {
 
 // Function overloading at the type level.
 // Fancy sfinae technique with test function overloading.
+// the type two__ is basically a false type, while char is true type.
+// if the type returned by test__ has size 1, then we know the char
+// case is triggered, otherwise two__ case is triggered.
+// Choose char instead of other types is because the size of char is
+// the same for all implementation, we can expect stable behavior.
 //
+// In our case, if 0 is passed in, template will try to deduce the type.
+// for test__ we have two cases, the first one takes any type, the second
+// one is more specific, takes type that contains rebind<U>.
+// If X has rebind, the second one will be the one to specialize, and we
+// get the overload that return char.
 template <typename T, typename U> struct has_rebind__ {
 private:
   struct two__ {
@@ -72,6 +97,25 @@ public:
   static const bool value = sizeof(test__<T>(0)) == 1;
 };
 
+template <typename T, typename U, bool = has_rebind__<T, U>::value>
+struct pointer_traits_rebind__ {
+  using type = typename T::template rebind<U>;
+};
+
+// the logic is if Tp has rebind, then use the rebind from Tp. In case
+// Tp doesn't have rebind, Mannually rebind Tp in Sp<Tp, Rrgs...> to U.
+template <template <typename, typename...> typename Sp, typename Tp,
+          typename... Args, typename U>
+struct pointer_traits_rebind__<Sp<Tp, Args...>, U, true> {
+  using type = typename Tp::template rebind<U>;
+};
+
+template <template <typename, typename...> typename Sp, typename Tp,
+          typename... Args, typename U>
+struct pointer_traits_rebind__<Sp<Tp, Args...>, U, false> {
+  using type = Sp<U, Args...>;
+};
+
 template <typename T, typename = void>
 struct has_difference_type__ : mstl::false_type {};
 
@@ -79,7 +123,7 @@ template <typename T>
 struct has_difference_type__<T, mstl::void_t<typename T::difference_type>>
     : mstl::true_type {};
 
-template <typename Ptr, bool = mstl::has_difference_type__<Ptr>::value>
+template <typename Ptr, bool = has_difference_type__<Ptr>::value>
 struct pointer_trait_difference_type {
   using type = ptrdiff_t;
 };
@@ -87,52 +131,89 @@ template <typename Ptr> struct pointer_trait_difference_type<Ptr, true> {
   using type = typename Ptr::difference_type;
 };
 
-// get the real address of object.
-template <typename T> constexpr T *addressof(T &arg) noexcept {
-  return reinterpret_cast<T *>(
-      &const_cast<char &>(reinterpret_cast<const volatile char &>(arg)));
-}
+} // namespace pointer_traits_UTILL
 
-template <typename T>
-constexpr T *addressof(const T &&arg) = delete; // no addr for const rvalue
-
-// a standarized way to access pointer like types.
-// iterator can be accessed by a pointer trait.
+// Not all pointers are in form T*. For example, when you have two processes
+// own pointers point to the same location in a shared memory, their address
+// might be different in each of their virtual address space. A solution from
+// boost is to create a struct offset_ptr that maintain the offset between
+// the pointer and the object it points to.
+// Clearly offset_ptr is not a T*, although we want to treat it as one.
+// The goal of pointer_traits is to provide an uniform interface for these
+// pointer types,
+//
+// More to read:
+// http://blog.nuggetwheat.org/index.php/2015/09/01/why-pointer_traits-was-introduced-in-c11/
 template <typename Ptr> struct pointer_traits {
   using pointer = Ptr;
-  using element_type = typename mstl::remove_pointer<Ptr>::type;
-  using difference_type = size_t;
+  using element_type =
+      typename pointer_traits_UTILL::pointer_trait_element_type__<Ptr>::type;
+  using difference_type =
+      typename pointer_traits_UTILL::pointer_trait_difference_type<Ptr>::type;
 
-  template <typename U> using rebind = void;
+  template <typename U>
+  using rebind =
+      typename pointer_traits_UTILL::pointer_traits_rebind__<Ptr, U>::type;
+
+private:
+  struct nat__ {};
+
+public:
+  static pointer
+  pointer_to(typename mstl::conditional<mstl::is_void<element_type>::value,
+                                        nat__, element_type>::type &r__) {
+    return pointer::pointer_to(r__);
+  }
 };
 
-// of course pointer_traits works with raw pointer too.
+// Note the class above doesn't handle raw pointer directly, so we
+// need overload for the T* case. Because it's just raw pointer, it's pretty
+// easy to implement.
 template <typename T> struct pointer_traits<T *> {
   using pointer = T *;
   using element_type = T;
   using difference_type = ptrdiff_t;
 
   template <typename U> using rebind = U *;
+
+private:
+  struct nat__ {};
+
+public:
+  // here, if we use &r__, it's possible that r__ overload & and
+  // bahave completely different from what we intend it to.
+  static pointer pointer_to(
+      typename mstl::conditional<mstl::is_void<element_type>::value, nat__,
+                                 element_type>::type &r__) noexcept {
+    return mstl::addressof(r__);
+  }
 };
 
+} // namespace mstl
+
+namespace mstl::memory_UTIL {
+
+// obtain true raw pointer from any pointer types.
+template <typename T> inline T *to_raw_pointer__(T *p) noexcept { return p; }
+template <typename Ptr>
+inline typename mstl::pointer_traits<Ptr>::element_type *
+to_raw_pointer__(Ptr p) noexcept {
+  return to_raw_pointer__(p);
+}
+} // namespace mstl::memory_UTIL
+
+namespace mstl {
+
+// to_address takes fancy pointer and return the raw pointer for it's
+// element_type
+// can't get function address
 template <typename T> constexpr T *to_address(T *p) noexcept {
   static_assert(!mstl::is_function<T>::value, "T is a function type");
   return p;
 }
-template <typename Ptr> inline auto to_address(const Ptr &p) noexcept {}
-
-} // namespace mstl
-
-namespace mstl {
-
-template <typename T> inline T *to_raw_pointer__(T *p) noexcept { return p; }
-
-template <typename Ptr>
-inline typename mstl::pointer_traits<Ptr>::element_type *
-to_raw_pointer__(Ptr p) noexcept {
-  return mstl::to_raw_pointer__(p);
+template <typename Ptr> auto to_address(const Ptr &p) noexcept {
+  return mstl::memory_UTIL::to_raw_pointer__(p);
 }
-
 } // namespace mstl
 
 namespace mstl {} // namespace mstl

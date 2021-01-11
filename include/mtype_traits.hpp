@@ -24,6 +24,16 @@ template <typename T, T v> struct integral_constant {
 using true_type = integral_constant<bool, true>;
 using false_type = integral_constant<bool, false>;
 
+template <bool Pred, typename If, typename Else> struct conditional;
+
+template <typename If, typename Else> struct conditional<true, If, Else> {
+  using type = If;
+};
+
+template <typename If, typename Else> struct conditional<false, If, Else> {
+  using type = Else;
+};
+
 } // namespace mstl
 
 namespace mstl {
@@ -280,5 +290,4 @@ template <typename Ret, class... Args>
 struct is_function<Ret(Args..., ...) volatile &&> : mstl::true_type {};
 template <typename Ret, class... Args>
 struct is_function<Ret(Args..., ...) const volatile &&> : mstl::true_type {};
-
 } // namespace mstl

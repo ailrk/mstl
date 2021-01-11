@@ -71,7 +71,7 @@ distance__(Iter first, Iter last, mstl::random_access_iterator_tag) {
 template <typename Iter>
 typename mstl::iterator_traits<Iter>::difference_type distance(Iter first,
                                                                Iter last) {
-  return do_distance(first, last,
+  return distance__(first, last,
                      mstl::iterator_traits<Iter>::iterator_category());
 }
 

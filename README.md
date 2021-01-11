@@ -69,6 +69,9 @@ void foo(B);
 
 ```
 
+- Pointer traits, iterator traits, allocator traits are adaptor templates that provides an uniform access of different types implement same members. I guess if you know what member to get from a type, you don't really need them.
+
+
 ### Source
 
 Some materials I read alone the way.
