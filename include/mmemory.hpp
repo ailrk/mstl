@@ -3,6 +3,20 @@
 #include "utility.hpp"
 
 namespace mstl {
+// get the real address of object.
+// This is the equivalence of &, and it can be used when & is
+// overloaded.
+template <typename T> constexpr T *addressof(T &arg) noexcept {
+  return reinterpret_cast<T *>(
+      &const_cast<char &>(reinterpret_cast<const volatile char &>(arg)));
+}
+
+template <typename T>
+constexpr T *addressof(const T &&arg) = delete; // no addr for const rvalue
+
+} // namespace mstl
+
+namespace mstl {
 template <typename T> class allocator;
 
 template <> class allocator<void> {
@@ -23,21 +37,7 @@ template <> class allocator<const void> {
 
 } // namespace mstl
 
-namespace mstl {
-// get the real address of object.
-// This is the equivalence of &, and it can be used when & is
-// overloaded.
-template <typename T> constexpr T *addressof(T &arg) noexcept {
-  return reinterpret_cast<T *>(
-      &const_cast<char &>(reinterpret_cast<const volatile char &>(arg)));
-}
-
-template <typename T>
-constexpr T *addressof(const T &&arg) = delete; // no addr for const rvalue
-
-} // namespace mstl
-
-namespace mstl {
+namespace mstl { // poiner traits
 
 namespace pointer_traits_UTILL {
 // some pointer traits helpers to check if certain member exists.
@@ -99,7 +99,7 @@ public:
 
 template <typename T, typename U, bool = has_rebind__<T, U>::value>
 struct pointer_traits_rebind__ {
-  using type = typename T::template rebind<U>;
+  using type = typename T::template rebind<U>::other;
 };
 
 // the logic is if Tp has rebind, then use the rebind from Tp. In case
@@ -107,7 +107,7 @@ struct pointer_traits_rebind__ {
 template <template <typename, typename...> typename Sp, typename Tp,
           typename... Args, typename U>
 struct pointer_traits_rebind__<Sp<Tp, Args...>, U, true> {
-  using type = typename Tp::template rebind<U>;
+  using type = typename Tp::template rebind<U>::other;
 };
 
 template <template <typename, typename...> typename Sp, typename Tp,
@@ -144,6 +144,7 @@ template <typename Ptr> struct pointer_trait_difference_type<Ptr, true> {
 //
 // More to read:
 // http://blog.nuggetwheat.org/index.php/2015/09/01/why-pointer_traits-was-introduced-in-c11/
+// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0653r0.html
 template <typename Ptr> struct pointer_traits {
   using pointer = Ptr;
   using element_type =
@@ -151,9 +152,10 @@ template <typename Ptr> struct pointer_traits {
   using difference_type =
       typename pointer_traits_UTILL::pointer_trait_difference_type<Ptr>::type;
 
-  template <typename U>
-  using rebind =
-      typename pointer_traits_UTILL::pointer_traits_rebind__<Ptr, U>::type;
+  template <typename U> struct rebind {
+    using other =
+        typename pointer_traits_UTILL::pointer_traits_rebind__<Ptr, U>::type;
+  };
 
 private:
   struct nat__ {};
@@ -174,7 +176,7 @@ template <typename T> struct pointer_traits<T *> {
   using element_type = T;
   using difference_type = ptrdiff_t;
 
-  template <typename U> using rebind = U *;
+  template <typename U> struct rebind { using Other = U *; };
 
 private:
   struct nat__ {};
@@ -195,28 +197,35 @@ namespace mstl::memory_UTIL {
 
 // obtain true raw pointer from any pointer types.
 template <typename T> inline T *to_raw_pointer__(T *p) noexcept { return p; }
+
+// if it's a pointer like type, use operator->() to obtain the real
+// pointer.
 template <typename Ptr>
 inline typename mstl::pointer_traits<Ptr>::element_type *
 to_raw_pointer__(Ptr p) noexcept {
-  return to_raw_pointer__(p);
+  return to_raw_pointer__(p.operator->());
 }
+
+// NOTE: c++20 move to_address into pointer_traits, using c++17 implementation
+// for now.
 } // namespace mstl::memory_UTIL
 
 namespace mstl {
 
 // to_address takes fancy pointer and return the raw pointer for it's
 // element_type
-// can't get function address
 template <typename T> constexpr T *to_address(T *p) noexcept {
   static_assert(!mstl::is_function<T>::value, "T is a function type");
   return p;
 }
+
 template <typename Ptr> auto to_address(const Ptr &p) noexcept {
   return mstl::memory_UTIL::to_raw_pointer__(p);
 }
 } // namespace mstl
 
-namespace mstl {} // namespace mstl
+namespace mstl // allocator traits
+{}             // namespace mstl
 
 namespace mstl {
 

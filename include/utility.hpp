@@ -24,4 +24,8 @@ constexpr T &&forward(typename mstl::remove_reference<T>::type &&t) noexcept {
   return static_cast<T &&>(t);
 }
 
+// To use decltype without creating a value.
+template <typename T>
+typename mstl::add_rvalue_reference<T>::type declval() noexcept;
+
 } // namespace mstl

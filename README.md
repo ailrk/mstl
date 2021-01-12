@@ -37,6 +37,8 @@ template <typename T> class K { T n; int foo() {return n.a + n.b}};
 
 - Another thing I found c++ people hyped about is template meta programming. But template are not really "meta programming" if you consider meta programming in the sense of common lisp macro. You do use tempalte to generate code, but with very limited control. The common technique with sfinae is more like helping you choose what correct code to produce or what code to reject, rather then literatly create the code for you. Constexpr does run some code at compile time, but it focus more on compute some stuffs at compile time; there is no concept like read time in common lisp (c preprocessor macro is real meta programming, but it sucks so much).  PS: An exceptoin is the varadic template, these feature really create code for you.
 
+- C++ macro is truly awful. For macro like `#define MAC(a, b)` , you can't pass something looks like this: `MAC(1, vector<int, Arena<int>)`, because the preprocessor doesn't know how to parse the greater then sign (again). In this case it will take it as you are passing three parameters, one of them is `vector < int` ...
+
 - RANT: why related functions are put in different headers? How `accumulate` is not part of functional? And why it's it called `accumulate` instead of fold anyway? Why `innder_product` instead of `zip`? If the less generic version of `zip` is `inner product` then why don't make them two different functions?  Why do we need `numeric` header when functions there all look like algoritm? Also functor means function object, why!!
 
 - Lots of funtions in the stl have the same name in common lisp. I wonder if there are any relationship. `remove_if` for example; who doesn't call it filter today...
@@ -59,6 +61,8 @@ template <typename T> class K { T n; int foo() {return n.a + n.b}};
 
 - One take away from stl is you can write your own type trait, and use it as interface over different types.
 
+- There are lots of functions in stl that are defined for some specific purposes. `addressoff` is really just `&`, but because we can overload `&`, so basically all libraries should use `addressof` to avoid ambiguity.
+
 ```c++
 // this doesn't work, because you only have one overload really.
 template <typename A, typename = enable_if_t<is_integral_v<T>, bool>>
@@ -70,6 +74,7 @@ void foo(B);
 ```
 
 - Pointer traits, iterator traits, allocator traits are adaptor templates that provides an uniform access of different types implement same members. I guess if you know what member to get from a type, you don't really need them.
+  - One example onf Some pointer like types are not necessarily pointer, `offset_ptr`, for example. `pointer_traits` is to treat them with an uniform interface.
 
 
 ### Source
