@@ -72,7 +72,7 @@ template <typename Iter>
 typename mstl::iterator_traits<Iter>::difference_type distance(Iter first,
                                                                Iter last) {
   return distance__(first, last,
-                     mstl::iterator_traits<Iter>::iterator_category());
+                    mstl::iterator_traits<Iter>::iterator_category());
 }
 
 } // namespace mstl
@@ -187,6 +187,7 @@ public:
   template <typename U>
   constexpr reverse_iterator(const mstl::reverse_iterator<U> &u)
       : current(u.base()) {}
+
   template <typename U>
   constexpr reverse_iterator &operator=(const reverse_iterator<U> &u) {
     this->current = u.base();

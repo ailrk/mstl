@@ -93,7 +93,7 @@ private:
   };
   template <typename X> static two__ test__(...);
   template <typename X>
-  static char test__(typename X::template rebind<U> * = 0);
+  static char test__(typename X::template rebind<U>::other * = 0);
 
 public:
   static const bool value = sizeof(test__<T>(0)) == 1;
