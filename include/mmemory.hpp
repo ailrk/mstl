@@ -3,6 +3,7 @@
 #include "utility.hpp"
 
 namespace mstl {
+
 // get the real address of object.
 // This is the equivalence of &, and it can be used when & is
 // overloaded.
@@ -45,6 +46,7 @@ namespace pointer_traits_UTILL {
 
 template <typename T, typename = void>
 struct has_element_type__ : mstl::false_type {}; // base
+
 // technique to check if something is well formed or illformed.
 // use the type as the argument of voit_t, which maps all types to void.
 // if it's well formed, this template will specialized to void,

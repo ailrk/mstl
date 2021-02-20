@@ -5,7 +5,7 @@ To learn stl better.
 ### Structure
 I don't bother implement anything from `<c...>` like `<cstddef>`, since they are just c facility and has nothing to do with templates. All functions are under the namespace `mstl`, and structured in the same way as the stl does. Lot's of implemnetations are simplified, because it's a pedagogical project. Some comments are added for highlight some details.
 
-### Some logs
+### Some Notes. This notes has been across years.
 
 Not only for stl, just some notes on c++ in general.
 
@@ -76,6 +76,7 @@ void foo(B);
 - Pointer traits, iterator traits, allocator traits are adaptor templates that provides an uniform access of different types implement same members. I guess if you know what member to get from a type, you don't really need them.
   - One example onf Some pointer like types are not necessarily pointer, `offset_ptr`, for example. `pointer_traits` is to treat them with an uniform interface.
 
+- `decay`
 
 ### Source
 
