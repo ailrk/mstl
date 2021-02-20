@@ -49,20 +49,34 @@ template <typename T> struct remove_reference { using type = T; };
 template <typename T> struct remove_reference<T &> { using type = T; };
 template <typename T> struct remove_reference<T &&> { using type = T; };
 
-// try int overload fisrt, if failed fall back to the same type.
+// try int overload first, if failed fall back to the same type.
 // if you want to add reference to a type, you need to be careful that
-// void is handled correctly. voit & is illformed anyway.
+// void is handled correctly. void & is illformed.
 template <typename T> auto try_add_lvalue_reference(int) -> type_identity<T &>;
 template <typename T> auto try_add_lvalue_reference(...) -> type_identity<T>;
 
 template <typename T> auto try_add_rvalue_reference(int) -> type_identity<T &&>;
 template <typename T> auto try_add_rvalue_reference(...) -> type_identity<T>;
 
+// explain: try... will try int overload first. as long as T is not void it's
+// well formed. in case T is void, void& is ill-formed, so we choose the
+// fallback implemnetation.
 template <typename T>
 struct add_lvalue_reference : decltype(mstl::try_add_lvalue_reference<T>(0)) {};
 
 template <typename T>
 struct add_rvalue_reference : decltype(mstl::try_add_rvalue_reference<T>(0)) {};
+
+// same method to handle pointer. In this case we also rely on remove referecen
+// defined eailer.
+// NOTE: Recognize this technique, use int and ... overload to split ill formed
+// and well formed cases.
+template <typename T>
+auto try_add_pointer(int)
+    -> type_identity<typename mstl::remove_reference<T>::type *>;
+template <typename T> auto try_add_pointer(...) -> type_identity<T>;
+template <typename T>
+struct add_pointer : decltype(mstl::try_add_pointer<T>(0)) {};
 
 } // namespace mstl
 
@@ -227,6 +241,7 @@ template <typename T> struct is_const : mstl::false_type {};
 template <typename T> struct is_const<const T> : mstl::true_type {};
 
 } // namespace mstl
+  // namespace mstl
 
 namespace mstl {
 template <typename T> struct is_function : mstl::false_type {};
@@ -290,4 +305,28 @@ template <typename Ret, class... Args>
 struct is_function<Ret(Args..., ...) volatile &&> : mstl::true_type {};
 template <typename Ret, class... Args>
 struct is_function<Ret(Args..., ...) const volatile &&> : mstl::true_type {};
+} // namespace mstl
+
+namespace mstl {
+
+// notice array type can be matched directly.
+template <typename T> struct remove_extent { using type = T; };
+template <typename T> struct remove_extent<T[]> { using type = T; };
+template <typename T, size_t N> struct remove_extent<T[N]> { using type = T; };
+
+template <typename T> struct decay {
+private:
+  using U = typename mstl::remove_reference<T>::type;
+
+  // logic:
+  //  if it's array of U, return U*
+  //  if it's function type U, add pointer to it.
+public:
+  using type = typename mstl::conditional<
+      mstl::is_array<U>::value, typename mstl::remove_extent<U>::type *,
+      typename mstl::conditional<
+          mstl::is_function<U>::value, typename mstl::add_pointer<U>::type,
+          typename mstl::remove_cv<U>::type>::type>::type;
+};
+
 } // namespace mstl

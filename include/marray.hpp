@@ -1,7 +1,7 @@
 #pragma once
 
 #include "malgorithm.hpp"
-#include "mexceptoin.hpp"
+#include "mexception.hpp"
 #include <cstddef>
 
 namespace mstl {

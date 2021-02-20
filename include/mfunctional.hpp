@@ -16,7 +16,6 @@ template <typename T> class reference_wrapper {
 public:
   using type = T;
   // TODO need declval
-
 };
 
 } // namespace mstl

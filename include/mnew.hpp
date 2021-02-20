@@ -1,9 +1,15 @@
 #pragma once
 
-#include "mexceptoin.hpp"
+#include "mexception.hpp"
 #include "stddef.h"
 #include "stdlib.h"
 
+// there are two steps for both new and delete:
+// 1. operator new   : allocate space
+// 2. placement new  : construct object
+//
+// 1. placement delete : delete object
+// 2. operator delete  : free memory
 namespace mstl {
 
 class bad_alloc : public mstl::exception {
@@ -17,7 +23,7 @@ class bad_array_new_length : public mstl::bad_alloc {
 public:
   bad_array_new_length() noexcept;
   virtual ~bad_array_new_length() noexcept;
-  virtual const char* what() const noexcept;
+  virtual const char *what() const noexcept;
 };
 
 enum class align_val_t : size_t {};
