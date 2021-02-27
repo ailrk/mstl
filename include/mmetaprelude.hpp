@@ -37,7 +37,7 @@ template <typename... Ts> using List_t = typename List<Ts...>::type;
 //   `typename`:  List<typename...>
 // @operations:
 //   `type`: typename,  get the head of the list.
-template <typename> struct Head {};
+template <typename> struct Head : Return<Nil> {};
 template <typename T, typename... Ts> struct Head<List<T, Ts...>> {
   using type = T;
 };
@@ -47,7 +47,7 @@ template <typename T, typename... Ts> struct Head<List<T, Ts...>> {
 //   `typename`:  List<typename...>
 // @operations:
 //   `type`: List<typename...>,  get the tail of the list.
-template <typename...> struct Tail {};
+template <typename> struct Tail : Return<Nil> {};
 template <typename T, typename... Ts> struct Tail<List<T, Ts...>> {
   using type = List<Ts...>;
 };
@@ -58,7 +58,7 @@ template <typename T, typename... Ts> struct Tail<List<T, Ts...>> {
 //   `List<typename...>`: second list
 // @operations:
 //   `type`: List<typename...>, the concated list.
-template <typename, typename> struct Concat {};
+template <typename, typename> struct Concat : Return<Nil> {};
 template <typename... Ts, typename... Us>
 struct Concat<List<Ts...>, List<Us...>> {
   using type = typename List<Ts...>::template append<Us...>;
@@ -78,7 +78,6 @@ template <template <typename> typename Pred, typename XS,
           typename Base = List<>>
 // default type parameter can introduce local binding.
 struct Filter : Base {};
-
 template <template <typename> typename Pred, typename Base, typename T,
           typename... Ts>
 struct Filter<Pred, Base, List<T, Ts...>> {
@@ -113,7 +112,7 @@ struct FoldeL<Op, Acc, List<T, Ts...>>
 //
 // @operations:
 //   value: bool,  the test result.
-template <typename E, typename XS> struct Elem {};
+template <typename E, typename XS> struct Elem : std::false_type {};
 template <typename E, typename... Ts>
 struct Elem<E, List<Ts...>> : std::bool_constant<(std::is_same_v<Ts> || ...)> {
 };
@@ -123,7 +122,7 @@ struct Elem<E, List<Ts...>> : std::bool_constant<(std::is_same_v<Ts> || ...)> {
 //    `Input`: List<typename...>
 // @operations:
 //    `type`: List<typename...>
-template <typename Input> class Unique {
+template <typename XS> class Unique {
   // use private type alias for local declaration.
 private:
   template <typename Acc, typename E>
@@ -131,7 +130,15 @@ private:
                                   typename Acc::template concat<E>> {};
 
 public:
-  using type = typename FoldeL<Add, List<>, Input>::type;
+  using type = typename FoldeL<Add, List<>, XS>::type;
+};
+
+template <template <typename> typename Pred, typename XS>
+struct FindIf : Return<Nil> {};
+
+template <template <typename> typename Pred, typename T, typename... Ts>
+struct FindIf<Pred, List<T, Ts...>>
+    : std::conditional<Pred<T>::value, Return<T>, FindIf<Return, List<Ts...>>> {
 };
 
 #define typeof(TYPE) static_assert(sizeof(TYPE) == -1)
