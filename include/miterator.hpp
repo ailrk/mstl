@@ -328,6 +328,7 @@ namespace mstl {
 
 } // namespace mstl
 
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // TODO remove these dependencies.
 #include <deque>
 #include <functional>
@@ -335,7 +336,7 @@ namespace mstl {
 #include <stack>
 #include <vector>
 
-namespace mst {
+namespace mstl {
 
 // Monotonic queue for sliding window problems.
 // find the biggest value in a subsequence
@@ -354,9 +355,9 @@ struct is_monotonic_iterator_tag : mstl::false_type {};
 
 template <typename Tag>
 struct is_monotonic_iterator_tag<
-    Tag, mstl::void_t<mstl::enable_if_t<
-             mstl::conjunction_v<mstl::is_same<Tag, monotonic_increasing>,
-                                 mstl::is_same<Tag, monotonic_decreasing>>>>>
+    Tag, mstl::void_t<typename mstl::enable_if<std::conjunction_v<
+             mstl::is_same<Tag, monotonic_increasing>::value,
+             mstl::is_same<Tag, monotonic_decreasing>::value>>::type>>
     : mstl::true_type {};
 
 template <typename Iter, typename Comp> class monotonic_queue_iterator {
@@ -598,4 +599,4 @@ constexpr decltype(auto) make_monotonic_stack_iterators(Iter begin, Iter end,
   return mstl::pair(monotonic_stack_iterator{begin, tag},
                     monotonic_stack_iterator{end + 1, tag});
 }
-} // namespace mst
+} // namespace mstl
